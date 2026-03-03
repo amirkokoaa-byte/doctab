@@ -1,0 +1,5 @@
+{
+  "name": "Smart Medical Assistant",
+  "description": "A comprehensive medical assistant using AI for OCR prescription analysis, radiology interpretation, and lab result analysis with a Glassmorphism UI.",
+  "requestFramePermissions": []
+}

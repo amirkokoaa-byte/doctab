@@ -1,0 +1,124 @@
+@import "tailwindcss";
+
+@theme {
+  --font-sans: "Cairo", "Inter", ui-sans-serif, system-ui, sans-serif;
+  --color-medical-blue: #0077b6;
+  --color-medical-light: #caf0f8;
+}
+
+@import url('https://fonts.googleapis.com/css2?family=Cairo:wght@200..1000&display=swap');
+
+body {
+  font-family: 'Cairo', sans-serif;
+  background-color: #0f172a;
+  background-image: 
+    radial-gradient(at 0% 0%, hsla(200, 98%, 20%, 1) 0, transparent 50%), 
+    radial-gradient(at 50% 0%, hsla(200, 100%, 36%, 0.4) 0, transparent 50%), 
+    radial-gradient(at 100% 0%, hsla(200, 98%, 20%, 1) 0, transparent 50%);
+  background-attachment: fixed;
+  color: #fff;
+  min-height: 100vh;
+}
+
+/* Custom Scrollbar */
+::-webkit-scrollbar {
+  width: 8px;
+}
+::-webkit-scrollbar-track {
+  background: rgba(255, 255, 255, 0.05); 
+}
+::-webkit-scrollbar-thumb {
+  background: rgba(0, 119, 182, 0.5); 
+  border-radius: 4px;
+}
+::-webkit-scrollbar-thumb:hover {
+  background: rgba(0, 119, 182, 0.7); 
+}
+
+/* Refined Glassmorphism */
+.glass-panel {
+  background: rgba(255, 255, 255, 0.05);
+  backdrop-filter: blur(25px);
+  -webkit-backdrop-filter: blur(25px);
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  box-shadow: 0 8px 32px 0 rgba(0, 119, 182, 0.15);
+}
+
+.glass-card {
+  background: rgba(255, 255, 255, 0.08);
+  backdrop-filter: blur(25px);
+  -webkit-backdrop-filter: blur(25px);
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  box-shadow: 0 4px 6px rgba(0, 0, 0, 0.05);
+  transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.glass-card:hover {
+  background: rgba(255, 255, 255, 0.12);
+  border-color: rgba(255, 255, 255, 0.4);
+  transform: translateY(-4px);
+  box-shadow: 0 15px 30px rgba(0, 119, 182, 0.2);
+}
+
+/* Critical Alert Styles */
+.glass-card.critical {
+  border-color: rgba(239, 68, 68, 0.5);
+  box-shadow: 0 0 20px rgba(239, 68, 68, 0.3);
+  animation: red-flash 2s infinite;
+}
+
+.glass-card.warning {
+  border-color: rgba(245, 158, 11, 0.5);
+  box-shadow: 0 0 20px rgba(245, 158, 11, 0.3);
+  animation: amber-glow 3s infinite;
+}
+
+@keyframes red-flash {
+  0% { box-shadow: 0 0 20px rgba(239, 68, 68, 0.3); border-color: rgba(239, 68, 68, 0.5); }
+  50% { box-shadow: 0 0 40px rgba(239, 68, 68, 0.6); border-color: rgba(239, 68, 68, 0.8); }
+  100% { box-shadow: 0 0 20px rgba(239, 68, 68, 0.3); border-color: rgba(239, 68, 68, 0.5); }
+}
+
+@keyframes amber-glow {
+  0% { box-shadow: 0 0 20px rgba(245, 158, 11, 0.3); }
+  50% { box-shadow: 0 0 30px rgba(245, 158, 11, 0.5); }
+  100% { box-shadow: 0 0 20px rgba(245, 158, 11, 0.3); }
+}
+
+.glass-input {
+  background: rgba(0, 0, 0, 0.2);
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  color: white;
+  backdrop-filter: blur(10px);
+}
+.glass-input:focus {
+  outline: none;
+  border-color: #0077b6;
+  background: rgba(0, 0, 0, 0.3);
+  box-shadow: 0 0 10px rgba(0, 119, 182, 0.3);
+}
+
+.glass-button {
+  background: linear-gradient(135deg, rgba(0, 119, 182, 0.2) 0%, rgba(0, 119, 182, 0.1) 100%);
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  backdrop-filter: blur(4px);
+  transition: all 0.3s ease;
+}
+.glass-button:hover {
+  background: linear-gradient(135deg, rgba(0, 119, 182, 0.4) 0%, rgba(0, 119, 182, 0.2) 100%);
+  border-color: rgba(255, 255, 255, 0.5);
+  transform: translateY(-1px);
+}
+
+/* Dictionary Tooltip */
+.medical-term {
+  border-bottom: 1px dashed rgba(0, 119, 182, 0.6);
+  cursor: help;
+  position: relative;
+  display: inline-block;
+}
+
+.medical-term:hover {
+  color: #caf0f8;
+  border-bottom-color: #caf0f8;
+}
