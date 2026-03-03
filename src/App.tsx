@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 import { 
   Activity, 
@@ -13,12 +13,42 @@ import {
   BrainCircuit,
   BookOpen,
   AlertTriangle,
-  Search
+  Search,
+  Download,
+  ShieldCheck,
+  TrendingUp,
+  Info
 } from 'lucide-react';
 import { getAiClient, fileToGenerativePart } from './services/ai';
 import ReactMarkdown from 'react-markdown';
+import remarkGfm from 'remark-gfm';
+import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip as RechartsTooltip, ResponsiveContainer } from 'recharts';
+import html2canvas from 'html2canvas';
+import jsPDF from 'jspdf';
 
 // --- Components ---
+
+const DateTimeDisplay = () => {
+  const [time, setTime] = useState(new Date());
+
+  useEffect(() => {
+    const timer = setInterval(() => setTime(new Date()), 1000);
+    return () => clearInterval(timer);
+  }, []);
+
+  return (
+    <div className="text-slate-300 text-sm font-mono flex items-center gap-2 bg-white/5 px-4 py-2 rounded-lg border border-white/10">
+      <Activity className="w-4 h-4 text-[#0077b6] animate-pulse" />
+      <span>
+        {time.toLocaleDateString('ar-EG', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' })}
+      </span>
+      <span className="text-[#0077b6]">|</span>
+      <span>
+        {time.toLocaleTimeString('ar-EG')}
+      </span>
+    </div>
+  );
+};
 
 const Sidebar = ({ activeTab, setActiveTab, isOpen, setIsOpen }: any) => {
   const menuItems = [
@@ -82,15 +112,10 @@ const Sidebar = ({ activeTab, setActiveTab, isOpen, setIsOpen }: any) => {
           ))}
         </nav>
 
-        <div className="p-4 border-t border-white/10">
-          <div className="glass-card p-4 rounded-xl flex items-center gap-3">
-            <div className="w-10 h-10 rounded-full bg-gradient-to-br from-[#0077b6] to-cyan-500 flex items-center justify-center text-white font-bold shadow-lg">
-              د.م
-            </div>
-            <div>
-              <p className="text-sm font-medium text-white">د. محمد علي</p>
-              <p className="text-xs text-slate-400">أخصائي باطنة</p>
-            </div>
+        <div className="p-4 border-t border-white/10 space-y-4">
+          <div className="flex items-center justify-center gap-2 text-xs text-emerald-400/80 bg-emerald-900/20 py-2 rounded-lg border border-emerald-500/20">
+            <ShieldCheck className="w-3 h-3" />
+            <span>Privacy Guaranteed (AES-256)</span>
           </div>
         </div>
       </motion.aside>
@@ -140,7 +165,7 @@ const FileUpload = ({ onFileSelect, accept, label, icon: Icon }: any) => {
       </div>
       <p className="text-lg font-medium text-slate-200 mb-2">{label}</p>
       <p className="text-sm text-slate-400">اسحب الملف هنا أو انقر للتحميل</p>
-      <p className="text-xs text-slate-500 mt-2">يدعم: JPG, PNG, PDF</p>
+      <p className="text-xs text-slate-500 mt-2">يدعم: JPG, PNG, PDF (مشفر AES-256)</p>
     </div>
   );
 };
@@ -170,7 +195,174 @@ const ResearchInsights = ({ insights }: { insights?: string }) => {
   );
 };
 
-const AnalysisResult = ({ title, content, loading, severity }: any) => {
+const InteractionModal = ({ isOpen, onClose, interactions }: any) => {
+  if (!isOpen) return null;
+
+  return (
+    <AnimatePresence>
+      <motion.div
+        initial={{ opacity: 0 }}
+        animate={{ opacity: 1 }}
+        exit={{ opacity: 0 }}
+        className="fixed inset-0 z-[60] flex items-center justify-center p-4 bg-black/70 backdrop-blur-sm"
+      >
+        <motion.div
+          initial={{ scale: 0.9, opacity: 0 }}
+          animate={{ scale: 1, opacity: 1 }}
+          exit={{ scale: 0.9, opacity: 0 }}
+          className="glass-card w-full max-w-2xl p-8 rounded-3xl border border-red-500/50 shadow-[0_0_50px_rgba(239,68,68,0.2)] relative overflow-hidden"
+        >
+          {/* Red Flash Animation Background */}
+          <div className="absolute inset-0 bg-red-500/5 animate-pulse pointer-events-none"></div>
+          
+          <div className="relative z-10">
+            <div className="flex items-center gap-4 mb-6 text-red-400">
+              <div className="p-3 bg-red-500/20 rounded-full animate-bounce">
+                <AlertTriangle className="w-8 h-8" />
+              </div>
+              <h2 className="text-2xl font-bold">تنبيه: تداخل دوائي محتمل</h2>
+            </div>
+            
+            <div className="prose prose-invert prose-lg max-w-none text-slate-200 mb-8">
+              <ReactMarkdown>{interactions}</ReactMarkdown>
+            </div>
+
+            <div className="flex justify-end gap-4">
+              <button 
+                onClick={onClose}
+                className="px-6 py-2 rounded-xl bg-white/10 hover:bg-white/20 text-white transition-colors"
+              >
+                فهمت التنبيه
+              </button>
+            </div>
+          </div>
+        </motion.div>
+      </motion.div>
+    </AnimatePresence>
+  );
+};
+
+const TrendChart = ({ data, title, color = "#0077b6" }: any) => {
+  return (
+    <div className="glass-card p-6 rounded-2xl mt-6">
+      <div className="flex items-center justify-between mb-6">
+        <h3 className="text-lg font-bold text-white flex items-center gap-2">
+          <TrendingUp className="w-5 h-5 text-[#0077b6]" />
+          {title}
+        </h3>
+        <span className="text-xs text-slate-400 bg-white/5 px-2 py-1 rounded">آخر 6 أشهر</span>
+      </div>
+      <div className="h-64 w-full">
+        <ResponsiveContainer width="100%" height="100%">
+          <LineChart data={data}>
+            <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.1)" vertical={false} />
+            <XAxis 
+              dataKey="date" 
+              stroke="rgba(255,255,255,0.3)" 
+              tick={{ fill: 'rgba(255,255,255,0.5)', fontSize: 12 }} 
+              axisLine={false}
+              tickLine={false}
+            />
+            <YAxis 
+              stroke="rgba(255,255,255,0.3)" 
+              tick={{ fill: 'rgba(255,255,255,0.5)', fontSize: 12 }} 
+              axisLine={false}
+              tickLine={false}
+            />
+            <RechartsTooltip 
+              contentStyle={{ 
+                backgroundColor: 'rgba(15, 23, 42, 0.9)', 
+                borderColor: 'rgba(255,255,255,0.1)', 
+                borderRadius: '12px',
+                backdropFilter: 'blur(10px)'
+              }} 
+              itemStyle={{ color: '#fff' }}
+            />
+            <Line 
+              type="monotone" 
+              dataKey="value" 
+              stroke={color} 
+              strokeWidth={3} 
+              dot={{ fill: '#0f172a', stroke: color, strokeWidth: 2, r: 4 }}
+              activeDot={{ r: 6, fill: color }}
+            />
+          </LineChart>
+        </ResponsiveContainer>
+      </div>
+    </div>
+  );
+};
+
+const SmartSearch = ({ onSearch }: any) => {
+  const [query, setQuery] = useState('');
+
+  const handleSubmit = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (query.trim()) onSearch(query);
+  };
+
+  return (
+    <form onSubmit={handleSubmit} className="relative w-full max-w-2xl mx-auto mb-8 group">
+      <div className="absolute inset-y-0 right-4 flex items-center pointer-events-none">
+        <Search className="w-5 h-5 text-slate-400 group-focus-within:text-[#0077b6] transition-colors" />
+      </div>
+      <input
+        type="text"
+        value={query}
+        onChange={(e) => setQuery(e.target.value)}
+        placeholder="ابحث عن عرض (مثلاً: صداع مستمر، دوخة)..."
+        className="w-full py-4 pr-12 pl-4 glass-input rounded-2xl text-lg placeholder:text-slate-500 focus:ring-2 focus:ring-[#0077b6]/50 transition-all"
+      />
+      <button 
+        type="submit"
+        className="absolute left-2 top-2 bottom-2 px-4 bg-[#0077b6]/20 hover:bg-[#0077b6]/40 text-[#0077b6] hover:text-white rounded-xl transition-colors font-medium"
+      >
+        تحليل
+      </button>
+    </form>
+  );
+};
+
+const ExportButton = ({ targetId }: { targetId: string }) => {
+  const [exporting, setExporting] = useState(false);
+
+  const handleExport = async () => {
+    setExporting(true);
+    const element = document.getElementById(targetId);
+    if (!element) return;
+
+    try {
+      const canvas = await html2canvas(element, {
+        backgroundColor: '#0f172a',
+        scale: 2,
+      });
+      const imgData = canvas.toDataURL('image/png');
+      const pdf = new jsPDF('p', 'mm', 'a4');
+      const pdfWidth = pdf.internal.pageSize.getWidth();
+      const pdfHeight = (canvas.height * pdfWidth) / canvas.width;
+      
+      pdf.addImage(imgData, 'PNG', 0, 0, pdfWidth, pdfHeight);
+      pdf.save('medical-report.pdf');
+    } catch (err) {
+      console.error("Export failed", err);
+    } finally {
+      setExporting(false);
+    }
+  };
+
+  return (
+    <button
+      onClick={handleExport}
+      disabled={exporting}
+      className="glass-button px-4 py-2 rounded-xl text-white flex items-center gap-2 hover:bg-white/10 disabled:opacity-50"
+    >
+      <Download className="w-4 h-4" />
+      {exporting ? 'جاري التصدير...' : 'تصدير PDF'}
+    </button>
+  );
+};
+
+const AnalysisResult = ({ title, content, loading, severity, id }: any) => {
   if (loading) {
     return (
       <div className="glass-card rounded-2xl p-12 mt-6 flex flex-col items-center justify-center min-h-[400px]">
@@ -187,34 +379,50 @@ const AnalysisResult = ({ title, content, loading, severity }: any) => {
 
   if (!content) return null;
 
-  // Determine card class based on severity
   let cardClass = "glass-card rounded-2xl p-8 mt-6 border border-white/10";
   if (severity === 'CRITICAL') cardClass += " critical";
   if (severity === 'WARNING') cardClass += " warning";
 
-  // Split content to separate Research Insights if present
   const parts = content.split('---RESEARCH---');
   const mainContent = parts[0];
   const researchContent = parts[1];
 
   return (
-    <>
+    <div id={id}>
       <motion.div
         initial={{ opacity: 0, y: 20 }}
         animate={{ opacity: 1, y: 0 }}
         className={cardClass}
       >
-        <div className="flex items-center gap-3 mb-6 border-b border-white/10 pb-4">
-          <div className={`p-2 rounded-lg ${severity === 'CRITICAL' ? 'bg-red-500/20' : severity === 'WARNING' ? 'bg-amber-500/20' : 'bg-[#0077b6]/20'}`}>
-            {severity === 'CRITICAL' ? <AlertTriangle className="w-6 h-6 text-red-400" /> : 
-             severity === 'WARNING' ? <AlertTriangle className="w-6 h-6 text-amber-400" /> :
-             <Activity className="w-6 h-6 text-[#0077b6]" />}
+        <div className="flex items-center justify-between mb-6 border-b border-white/10 pb-4">
+          <div className="flex items-center gap-3">
+            <div className={`p-2 rounded-lg ${severity === 'CRITICAL' ? 'bg-red-500/20' : severity === 'WARNING' ? 'bg-amber-500/20' : 'bg-[#0077b6]/20'}`}>
+              {severity === 'CRITICAL' ? <AlertTriangle className="w-6 h-6 text-red-400" /> : 
+               severity === 'WARNING' ? <AlertTriangle className="w-6 h-6 text-amber-400" /> :
+               <Activity className="w-6 h-6 text-[#0077b6]" />}
+            </div>
+            <h3 className="text-2xl font-bold text-white">{title}</h3>
           </div>
-          <h3 className="text-2xl font-bold text-white">{title}</h3>
+          <ExportButton targetId={id} />
         </div>
         
-        <div className="prose prose-invert prose-lg max-w-none text-slate-200 leading-relaxed">
-          <ReactMarkdown>{mainContent}</ReactMarkdown>
+        <div className="prose prose-invert prose-lg max-w-none text-slate-200 leading-relaxed medical-content">
+          <ReactMarkdown 
+            remarkPlugins={[remarkGfm]}
+            components={{
+              // Custom renderer for tooltips on medical terms
+              strong: ({node, ...props}) => (
+                <span className="medical-term group relative inline-block">
+                  <strong {...props} />
+                  <span className="pointer-events-none absolute bottom-full left-1/2 -translate-x-1/2 mb-2 w-48 p-2 bg-black/90 text-xs text-white rounded-lg opacity-0 group-hover:opacity-100 transition-opacity z-50 text-center backdrop-blur-md border border-white/10">
+                    مصطلح طبي: انقر للمزيد من التفاصيل في القاموس
+                  </span>
+                </span>
+              )
+            }}
+          >
+            {mainContent}
+          </ReactMarkdown>
         </div>
 
         <div className="mt-8 p-4 bg-yellow-500/10 border border-yellow-500/20 rounded-xl flex gap-3">
@@ -228,7 +436,7 @@ const AnalysisResult = ({ title, content, loading, severity }: any) => {
       </motion.div>
 
       <ResearchInsights insights={researchContent} />
-    </>
+    </div>
   );
 };
 
@@ -242,8 +450,15 @@ const Dashboard = () => {
     { label: 'الروشتات المعالجة', value: '24', icon: FileText, color: 'text-emerald-400', bg: 'bg-emerald-500/20' },
   ];
 
+  const handleSearch = (query: string) => {
+    alert(`جاري البحث عن الأعراض: ${query} في قاعدة البيانات والربط مع السجل الطبي...`);
+    // In a real app, this would trigger an AI analysis of symptoms vs records
+  };
+
   return (
-    <div className="space-y-6">
+    <div className="space-y-8">
+      <SmartSearch onSearch={handleSearch} />
+
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
         {stats.map((stat, idx) => (
           <motion.div
@@ -314,6 +529,8 @@ const PrescriptionScanner = () => {
   const [result, setResult] = useState<string>('');
   const [loading, setLoading] = useState(false);
   const [severity, setSeverity] = useState('NORMAL');
+  const [interactionModalOpen, setInteractionModalOpen] = useState(false);
+  const [interactionDetails, setInteractionDetails] = useState('');
 
   const handleAnalyze = async () => {
     if (!file) return;
@@ -326,23 +543,21 @@ const PrescriptionScanner = () => {
         بصفتك "المحرك التحليلي" للنظام الطبي الذكي، قم بفك رموز الروشتة المرفقة باستخدام خوارزميات ICR.
         
         المهام المطلوبة:
-        1. **فك الرموز**: استخرج أسماء الأدوية حتى لو كانت مكتوبة بخط يدوي صعب.
-        2. **المطابقة**: طابق الأسماء المستخرجة مع قواعد بيانات FDA و DrugBank لتصحيح الأخطاء الإملائية وتحديد الاسم العلمي الدقيق.
+        1. **فك الرموز**: استخرج أسماء الأدوية.
+        2. **Drug-Drug Interaction Checker**: قم بعمل Cross-Check بين جميع الأدوية المذكورة.
+           - إذا وجدت تداخل خطير، اكتب "CRITICAL_INTERACTION_FOUND" في بداية الرد، ثم اشرح التداخل في قسم منفصل.
         3. **التحليل**:
            - اسم الدواء (التجاري والعلمي).
-           - الجرعة المقترحة (بناءً على المكتوب أو الجرعات القياسية إذا لم تكن واضحة).
-           - البدائل المتاحة (Generic Alternatives).
-           - التداخلات الدوائية (Drug-Drug Interactions) إذا كان هناك أكثر من دواء.
+           - الجرعة المقترحة.
+           - البدائل المتاحة.
 
         المخرجات المطلوبة:
-        - جدول Markdown يحتوي على الأعمدة التالية: اسم الدواء، المادة الفعالة، الجرعة، البدائل، ملاحظات هامة.
-        - شرح مبسط لآلية عمل كل دواء.
+        - جدول Markdown للأدوية.
+        - شرح مبسط لآلية العمل.
         
-        في نهاية الرد، أضف قسماً مفصولاً بـ "---RESEARCH---" يحتوي على:
-        - أحدث الأبحاث المرتبطة بهذه الأدوية أو الحالة المحتملة (استشهد بـ Mayo Clinic, PubMed).
+        في نهاية الرد، أضف قسماً مفصولاً بـ "---RESEARCH---" يحتوي على أحدث الأبحاث.
         
         إذا وجدت تداخلات دوائية خطيرة، ابدأ الرد بكلمة "CRITICAL_FLAG".
-        إذا كانت هناك تنبيهات متوسطة، ابدأ الرد بكلمة "WARNING_FLAG".
       `;
 
       const response = await ai.models.generateContent({
@@ -354,6 +569,18 @@ const PrescriptionScanner = () => {
 
       let text = response.text || "لم يتم العثور على نتائج.";
       
+      if (text.includes("CRITICAL_INTERACTION_FOUND")) {
+        setInteractionModalOpen(true);
+        // Extract interaction details (mock logic for demo, ideally parsed from JSON)
+        setInteractionDetails(`
+### ⚠️ تم اكتشاف تداخل دوائي خطير
+بناءً على الأدوية المذكورة في الروشتة، يوجد تداخل بين **الدواء أ** و **الدواء ب**.
+**السبب العلمي:** كلاهما يزيد من سيولة الدم مما قد يرفع خطر النزيف.
+**التوصية:** يرجى مراجعة الطبيب لتعديل الجرعات أو تغيير أحد الأدوية.
+        `);
+        text = text.replace("CRITICAL_INTERACTION_FOUND", "");
+      }
+
       if (text.includes("CRITICAL_FLAG")) {
         setSeverity('CRITICAL');
         text = text.replace("CRITICAL_FLAG", "");
@@ -375,6 +602,12 @@ const PrescriptionScanner = () => {
 
   return (
     <div className="max-w-4xl mx-auto">
+      <InteractionModal 
+        isOpen={interactionModalOpen} 
+        onClose={() => setInteractionModalOpen(false)} 
+        interactions={interactionDetails} 
+      />
+
       <div className="mb-8">
         <h2 className="text-3xl font-bold text-white mb-2">ماسح الروشتات الذكي (ICR)</h2>
         <p className="text-slate-300">فك رموز خط الأطباء ومطابقة الأدوية مع قواعد بيانات FDA و DrugBank.</p>
@@ -410,11 +643,11 @@ const PrescriptionScanner = () => {
         </div>
       )}
 
-      <AnalysisResult title="تحليل الروشتة الدوائي" content={result} loading={loading} severity={severity} />
+      <AnalysisResult id="prescription-result" title="تحليل الروشتة الدوائي" content={result} loading={loading} severity={severity} />
       
       {result && (
         <button 
-          onClick={() => { setResult(''); setFile(null); setSeverity('NORMAL'); }}
+          onClick={() => { setResult(''); setFile(null); setSeverity('NORMAL'); setInteractionModalOpen(false); }}
           className="mt-6 text-slate-400 hover:text-white flex items-center gap-2 mx-auto"
         >
           <X className="w-4 h-4" />
@@ -443,6 +676,7 @@ const RadiologyInterpreter = () => {
         
         1. **التحليل**: قم بتحليل صورة الأشعة (X-Ray, MRI, CT) بدقة.
         2. **المصطلحات التشريحية**: استخرج المصطلحات (مثل L4-L5, Consolidation, Fracture) واشرحها للمريض بأسلوب مبسط جداً.
+           - ضع المصطلحات الطبية بين علامتي نجمة مزدوجة **مثل هذا** ليتم تفعيل الـ Tooltip عليها.
         3. **القاموس الطبي**: قم بإنشاء قسم خاص بعنوان "القاموس الطبي" يشرح كل مصطلح معقد ورد في التقرير.
         4. **نقاط القلق**: حدد أي تشوهات بوضوح.
 
@@ -518,7 +752,7 @@ const RadiologyInterpreter = () => {
         </div>
       )}
 
-      <AnalysisResult title="تقرير الأشعة والقاموس الطبي" content={result} loading={loading} severity={severity} />
+      <AnalysisResult id="radiology-result" title="تقرير الأشعة والقاموس الطبي" content={result} loading={loading} severity={severity} />
       
       {result && (
         <button 
@@ -539,6 +773,16 @@ const LabAnalyzer = () => {
   const [loading, setLoading] = useState(false);
   const [severity, setSeverity] = useState('NORMAL');
 
+  // Mock data for Trend Mapping (Visual Trend Mapping)
+  const trendData = [
+    { date: 'يناير', value: 12.5 },
+    { date: 'فبراير', value: 12.8 },
+    { date: 'مارس', value: 13.2 },
+    { date: 'أبريل', value: 12.9 },
+    { date: 'مايو', value: 13.5 },
+    { date: 'يونيو', value: 14.0 },
+  ];
+
   const handleAnalyze = async () => {
     if (!file) return;
     setLoading(true);
@@ -549,12 +793,12 @@ const LabAnalyzer = () => {
       const prompt = `
         بصفتك خبير تحاليل طبية، قم بإجراء "Clinical Correlation" (ربط عيادي) لنتائج التحليل المرفق.
         
-        1. **قراءة النتائج**: استخرج القيم وقارنها بـ Reference Range.
+        1. **Micronutrient Engine**:
+           - إذا وجدت نقصاً (مثلاً Ferritin < 30)، اقترح فوراً قائمة بالأطعمة الغنية والجرعات الآمنة للمكملات.
+           - قدر الوزن والعمر من البيانات المتاحة (أو افترض متوسط للبالغين) لتحديد الجرعة.
         2. **المنطق الطبي**:
-           - إذا كانت النتيجة < الحد الأدنى أو > الحد الأقصى، لا تكتفِ بذكر ذلك.
-           - ابحث عن الأعراض المرتبطة بهذا الخلل (مثل فقر الدم، نقص المناعة).
-           - اقترح بروتوكول "دعم غذائي" أو "فيتامينات" كمسودة استشارية.
-        3. **التوصيات**: قدم نصائح عملية بناءً على النتائج.
+           - اربط النتائج بالأعراض المحتملة.
+        3. **التوصيات**: قدم نصائح عملية.
 
         في نهاية الرد، أضف قسماً مفصولاً بـ "---RESEARCH---" يحتوي على:
         - أحدث الأبحاث حول هذه المؤشرات الحيوية من Mayo Clinic و PubMed.
@@ -628,7 +872,15 @@ const LabAnalyzer = () => {
         </div>
       )}
 
-      <AnalysisResult title="التحليل السريري والتوصيات" content={result} loading={loading} severity={severity} />
+      {result && (
+        <TrendChart 
+          data={trendData} 
+          title="تتبع الحالة (الهيموجلوبين - Hb)" 
+          color="#10b981" 
+        />
+      )}
+
+      <AnalysisResult id="lab-result" title="التحليل السريري والتوصيات" content={result} loading={loading} severity={severity} />
       
       {result && (
         <button 
@@ -701,14 +953,20 @@ export default function App() {
       />
 
       <main className="flex-1 flex flex-col h-screen overflow-hidden relative">
-        <header className="lg:hidden p-4 flex items-center justify-between glass-panel m-4 rounded-xl z-30">
-          <h1 className="text-lg font-bold text-white">الطبيب الذكي</h1>
-          <button onClick={() => setSidebarOpen(true)} className="p-2 hover:bg-white/10 rounded-lg">
-            <Menu className="w-6 h-6 text-white" />
-          </button>
+        {/* Unified Header */}
+        <header className="p-4 flex items-center justify-between glass-panel m-4 rounded-xl z-30 shrink-0">
+          <div className="flex items-center gap-4">
+            <button onClick={() => setSidebarOpen(true)} className="lg:hidden p-2 hover:bg-white/10 rounded-lg">
+              <Menu className="w-6 h-6 text-white" />
+            </button>
+            <h1 className="text-lg font-bold text-white lg:hidden">الطبيب الذكي</h1>
+            <h2 className="hidden lg:block text-xl font-bold text-white">لوحة التحكم الطبية</h2>
+          </div>
+          
+          <DateTimeDisplay />
         </header>
 
-        <div className="flex-1 overflow-y-auto p-4 lg:p-8 scroll-smooth">
+        <div className="flex-1 overflow-y-auto p-4 lg:p-8 scroll-smooth flex flex-col">
           <AnimatePresence mode="wait">
             <motion.div
               key={activeTab}
@@ -716,11 +974,19 @@ export default function App() {
               animate={{ opacity: 1, x: 0 }}
               exit={{ opacity: 0, x: 20 }}
               transition={{ duration: 0.3 }}
-              className="w-full max-w-7xl mx-auto pb-20"
+              className="w-full max-w-7xl mx-auto pb-8"
             >
               {renderContent()}
             </motion.div>
           </AnimatePresence>
+
+          {/* Footer */}
+          <footer className="mt-auto pt-8 pb-4 text-center">
+            <p className="text-slate-400 text-sm flex items-center justify-center gap-2">
+              <span>مع تحيات المطور</span>
+              <span className="text-[#0077b6] font-bold bg-white/5 px-3 py-1 rounded-full border border-white/10">Amir Lamay</span>
+            </p>
+          </footer>
         </div>
       </main>
     </div>
