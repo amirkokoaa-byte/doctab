@@ -86,7 +86,7 @@ const MedicineScanner = () => {
       `;
 
       const response = await ai.models.generateContent({
-        model: "gemini-2.5-flash",
+        model: "gemini-2.5-flash-image",
         contents: {
           parts: [imagePart, { text: prompt }]
         }
@@ -842,7 +842,7 @@ const PrescriptionScanner = () => {
       `;
 
       const response = await ai.models.generateContent({
-        model: "gemini-2.5-flash",
+        model: "gemini-2.5-flash-image",
         contents: {
           parts: [imagePart, { text: prompt }]
         }
@@ -983,7 +983,7 @@ const RadiologyInterpreter = () => {
       `;
 
       const response = await ai.models.generateContent({
-        model: "gemini-2.5-flash",
+        model: "gemini-2.5-flash-image",
         contents: {
           parts: [imagePart, { text: prompt }]
         }
@@ -1117,7 +1117,7 @@ const LabAnalyzer = () => {
       `;
 
       const response = await ai.models.generateContent({
-        model: "gemini-2.5-flash",
+        model: "gemini-2.5-flash-image",
         contents: {
           parts: [imagePart, { text: prompt }]
         }
