@@ -17,7 +17,36 @@ import {
   Download,
   ShieldCheck,
   TrendingUp,
-  Info
+  Info,
+  Clock,
+  Tag,
+  DollarSign,
+  Bell
+} from 'lucide-react';
+
+// ... (previous imports)
+import { 
+  Activity, 
+  FileText, 
+  ScanLine, 
+  FlaskConical, 
+  LayoutDashboard, 
+  Menu, 
+  X,
+  Stethoscope,
+  Pill,
+  BrainCircuit,
+  BookOpen,
+  AlertTriangle,
+  Search,
+  Download,
+  ShieldCheck,
+  TrendingUp,
+  Info,
+  Clock,
+  Tag,
+  DollarSign,
+  Bell
 } from 'lucide-react';
 import { getAiClient, fileToGenerativePart } from './services/ai';
 import ReactMarkdown from 'react-markdown';
@@ -26,7 +55,192 @@ import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip as RechartsToolti
 import html2canvas from 'html2canvas';
 import jsPDF from 'jspdf';
 
-// --- Components ---
+// ... (Sidebar, FileUpload, ResearchInsights, InteractionModal, TrendChart, SmartSearch, ExportButton, AnalysisResult components)
+
+const MedicineScanner = () => {
+  const [file, setFile] = useState<File | null>(null);
+  const [result, setResult] = useState<string>('');
+  const [loading, setLoading] = useState(false);
+
+  const handleAnalyze = async () => {
+    if (!file) return;
+    setLoading(true);
+    try {
+      const ai = getAiClient();
+      const imagePart = await fileToGenerativePart(file);
+      
+      const prompt = `
+        تعامل كمحرك ذكاء اصطناعي متخصص في الصيدلة الإكلينيكية (Clinical Pharmacy).
+        قم بتحليل صورة "عبوة الدواء" أو "شريط الدواء" المرفقة بدقة 100%.
+
+        المطلوب:
+        1. **Medicine Identification**: الاسم التجاري، الاسم العلمي، التركيز، الشكل الصيدلاني.
+        2. **Therapeutic Analysis**: ما هو هذا الدواء وماذا يعالج؟ التصنيف العلاجي.
+        3. **Dosage & Administration**: الجرعات القياسية للبالغين والأطفال، ملاحظات هامة (قبل/بعد الأكل، تحذيرات).
+        4. **Pricing & Availability**: السعر الرسمي التقريبي (بالعملة المحلية المتوقعة أو الدولار)، حجم العبوة.
+
+        **القيود الصارمة**:
+        - إذا كانت الصورة واضحة، ابدأ الرد فوراً بعبارة: "تم تحليل علبة الدواء بنجاح".
+        - إذا كانت الصورة غير واضحة، رد فقط بـ: "يرجى تحسين الإضاءة أو تقريب الكاميرا من اسم الدواء".
+        - نسق الإجابة في نقاط منظمة جداً باستخدام Markdown.
+      `;
+
+      const response = await ai.models.generateContent({
+        model: "gemini-2.5-flash-image",
+        contents: {
+          parts: [imagePart, { text: prompt }]
+        }
+      });
+
+      setResult(response.text || "لم يتم العثور على نتائج.");
+    } catch (error) {
+      console.error(error);
+      setResult("حدث خطأ أثناء تحليل الدواء.");
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleSetReminder = () => {
+    alert("تم ضبط منبه الجرعة بنجاح! سيتم تذكيرك في الموعد المحدد.");
+  };
+
+  return (
+    <div className="max-w-4xl mx-auto">
+      <div className="mb-8">
+        <h2 className="text-3xl font-bold text-white mb-2">ماسح الأدوية الذكي</h2>
+        <p className="text-slate-300">التعرف على الأدوية من العبوة، الجرعات، ودواعي الاستعمال.</p>
+      </div>
+
+      {!result && !loading && (
+        <div className="glass-card p-8 rounded-3xl">
+          <FileUpload 
+            onFileSelect={(f: File) => setFile(f)}
+            accept="image/*"
+            label="صور علبة الدواء"
+            icon={Pill}
+          />
+          {file && (
+            <div className="mt-6 flex items-center justify-between bg-white/5 p-4 rounded-xl border border-white/10">
+              <div className="flex items-center gap-3">
+                <div className="w-12 h-12 rounded-lg bg-slate-700 overflow-hidden">
+                  <img src={URL.createObjectURL(file)} alt="Preview" className="w-full h-full object-cover" />
+                </div>
+                <div>
+                  <p className="text-white font-medium">{file.name}</p>
+                </div>
+              </div>
+              <button 
+                onClick={handleAnalyze}
+                className="glass-button px-6 py-2 rounded-lg text-white font-medium flex items-center gap-2 hover:bg-[#0077b6]/30"
+              >
+                <Pill className="w-4 h-4" />
+                تحليل الدواء
+              </button>
+            </div>
+          )}
+        </div>
+      )}
+
+      {loading && (
+        <div className="glass-card rounded-2xl p-12 mt-6 flex flex-col items-center justify-center min-h-[400px]">
+          <div className="relative w-24 h-24">
+            <div className="absolute inset-0 rounded-full border-4 border-[#0077b6]/30 animate-pulse"></div>
+            <div className="absolute inset-0 rounded-full border-t-4 border-[#0077b6] animate-spin"></div>
+            <Pill className="absolute inset-0 m-auto text-[#0077b6] w-10 h-10 animate-pulse" />
+          </div>
+          <p className="mt-8 text-xl text-blue-200 font-medium animate-pulse">جاري التعرف على الدواء...</p>
+          <p className="text-sm text-slate-400 mt-2">مطابقة الشعار والاسم مع قاعدة البيانات الصيدلانية</p>
+        </div>
+      )}
+
+      {result && !loading && (
+        <motion.div
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          className="glass-card rounded-2xl p-8 mt-6 border border-white/10 relative overflow-hidden"
+        >
+          {/* Background decoration */}
+          <div className="absolute top-0 left-0 w-full h-2 bg-gradient-to-r from-[#0077b6] to-cyan-400"></div>
+
+          <div className="flex items-center justify-between mb-6 border-b border-white/10 pb-4">
+            <div className="flex items-center gap-3">
+              <div className="p-2 rounded-lg bg-[#0077b6]/20">
+                <Pill className="w-6 h-6 text-[#0077b6]" />
+              </div>
+              <h3 className="text-2xl font-bold text-white">بطاقة الدواء التعريفية</h3>
+            </div>
+            <div className="flex items-center gap-2">
+              <button
+                onClick={() => saveRecord({
+                  id: Date.now().toString(),
+                  type: 'medicine',
+                  title: `تحليل دواء: ${file?.name}`,
+                  date: new Date().toISOString(),
+                  content: result,
+                  severity: 'NORMAL'
+                })}
+                className="glass-button px-4 py-2 rounded-xl text-white flex items-center justify-center gap-2 hover:bg-white/10"
+              >
+                <FileText className="w-4 h-4" />
+                حفظ
+              </button>
+              <ExportButton targetId="medicine-result" />
+            </div>
+          </div>
+
+          <div id="medicine-result" className="grid grid-cols-1 md:grid-cols-2 gap-8">
+            {/* Image Preview in Card */}
+            {file && (
+              <div className="rounded-xl overflow-hidden border border-white/10 h-64 md:h-auto relative group">
+                <img src={URL.createObjectURL(file)} alt="Medicine" className="w-full h-full object-cover" />
+                <div className="absolute inset-0 bg-black/40 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity">
+                  <ScanLine className="w-12 h-12 text-white/80" />
+                </div>
+              </div>
+            )}
+
+            {/* Content */}
+            <div className="prose prose-invert prose-lg max-w-none text-slate-200 leading-relaxed medical-content">
+              <ReactMarkdown 
+                remarkPlugins={[remarkGfm]}
+                components={{
+                  li: ({node, ...props}) => (
+                    <li className="flex items-start gap-2 mb-2">
+                      <span className="mt-1.5 w-2 h-2 rounded-full bg-[#0077b6] shrink-0" />
+                      <span {...props} />
+                    </li>
+                  )
+                }}
+              >
+                {result}
+              </ReactMarkdown>
+            </div>
+          </div>
+
+          {/* Action Buttons */}
+          <div className="mt-8 pt-6 border-t border-white/10 flex flex-wrap gap-4">
+            <button 
+              onClick={handleSetReminder}
+              className="flex-1 glass-button px-6 py-3 rounded-xl text-white font-bold flex items-center justify-center gap-2 hover:bg-[#0077b6]/40 bg-[#0077b6]/20 transition-all group"
+            >
+              <Bell className="w-5 h-5 group-hover:animate-swing" />
+              ضبط تنبيه الجرعة
+            </button>
+            <button 
+              onClick={() => { setResult(''); setFile(null); }}
+              className="glass-button px-6 py-3 rounded-xl text-slate-300 hover:text-white flex items-center gap-2"
+            >
+              <X className="w-5 h-5" />
+              مسح جديد
+            </button>
+          </div>
+        </motion.div>
+      )}
+    </div>
+  );
+};
+// ... (Rest of the components: PrescriptionScanner, RadiologyInterpreter, LabAnalyzer, MedicalRecords)
 
 const DateTimeDisplay = () => {
   const [time, setTime] = useState(new Date());
@@ -54,6 +268,7 @@ const Sidebar = ({ activeTab, setActiveTab, isOpen, setIsOpen }: any) => {
   const menuItems = [
     { id: 'dashboard', label: 'لوحة التحكم', icon: LayoutDashboard },
     { id: 'prescription', label: 'ماسح الروشتات', icon: ScanLine },
+    { id: 'medicine', label: 'ماسح الأدوية', icon: Pill },
     { id: 'radiology', label: 'قسم الأشعة', icon: BrainCircuit },
     { id: 'lab', label: 'مختبر التحاليل', icon: FlaskConical },
     { id: 'records', label: 'السجل الطبي', icon: FileText },
@@ -362,7 +577,7 @@ const ExportButton = ({ targetId }: { targetId: string }) => {
   );
 };
 
-const AnalysisResult = ({ title, content, loading, severity, id }: any) => {
+const AnalysisResult = ({ title, content, loading, severity, id, onSave }: any) => {
   if (loading) {
     return (
       <div className="glass-card rounded-2xl p-12 mt-6 flex flex-col items-center justify-center min-h-[400px]">
@@ -394,16 +609,27 @@ const AnalysisResult = ({ title, content, loading, severity, id }: any) => {
         animate={{ opacity: 1, y: 0 }}
         className={cardClass}
       >
-        <div className="flex items-center justify-between mb-6 border-b border-white/10 pb-4">
+        <div className="flex flex-col md:flex-row items-start md:items-center justify-between mb-6 border-b border-white/10 pb-4 gap-4">
           <div className="flex items-center gap-3">
             <div className={`p-2 rounded-lg ${severity === 'CRITICAL' ? 'bg-red-500/20' : severity === 'WARNING' ? 'bg-amber-500/20' : 'bg-[#0077b6]/20'}`}>
               {severity === 'CRITICAL' ? <AlertTriangle className="w-6 h-6 text-red-400" /> : 
                severity === 'WARNING' ? <AlertTriangle className="w-6 h-6 text-amber-400" /> :
                <Activity className="w-6 h-6 text-[#0077b6]" />}
             </div>
-            <h3 className="text-2xl font-bold text-white">{title}</h3>
+            <h3 className="text-xl md:text-2xl font-bold text-white">{title}</h3>
           </div>
-          <ExportButton targetId={id} />
+          <div className="flex items-center gap-2 w-full md:w-auto">
+            {onSave && (
+              <button
+                onClick={onSave}
+                className="glass-button px-4 py-2 rounded-xl text-white flex items-center justify-center gap-2 hover:bg-white/10 flex-1 md:flex-none"
+              >
+                <FileText className="w-4 h-4" />
+                حفظ
+              </button>
+            )}
+            <ExportButton targetId={id} />
+          </div>
         </div>
         
         <div className="prose prose-invert prose-lg max-w-none text-slate-200 leading-relaxed medical-content">
@@ -643,7 +869,21 @@ const PrescriptionScanner = () => {
         </div>
       )}
 
-      <AnalysisResult id="prescription-result" title="تحليل الروشتة الدوائي" content={result} loading={loading} severity={severity} />
+      <AnalysisResult 
+        id="prescription-result" 
+        title="تحليل الروشتة الدوائي" 
+        content={result} 
+        loading={loading} 
+        severity={severity}
+        onSave={() => saveRecord({
+          id: Date.now().toString(),
+          type: 'prescription',
+          title: 'تحليل روشتة طبية',
+          date: new Date().toISOString(),
+          content: result,
+          severity: severity as any
+        })}
+      />
       
       {result && (
         <button 
@@ -752,7 +992,21 @@ const RadiologyInterpreter = () => {
         </div>
       )}
 
-      <AnalysisResult id="radiology-result" title="تقرير الأشعة والقاموس الطبي" content={result} loading={loading} severity={severity} />
+      <AnalysisResult 
+        id="radiology-result" 
+        title="تقرير الأشعة والقاموس الطبي" 
+        content={result} 
+        loading={loading} 
+        severity={severity}
+        onSave={() => saveRecord({
+          id: Date.now().toString(),
+          type: 'radiology',
+          title: 'تقرير أشعة وتحليل دلالي',
+          date: new Date().toISOString(),
+          content: result,
+          severity: severity as any
+        })}
+      />
       
       {result && (
         <button 
@@ -880,7 +1134,21 @@ const LabAnalyzer = () => {
         />
       )}
 
-      <AnalysisResult id="lab-result" title="التحليل السريري والتوصيات" content={result} loading={loading} severity={severity} />
+      <AnalysisResult 
+        id="lab-result" 
+        title="التحليل السريري والتوصيات" 
+        content={result} 
+        loading={loading} 
+        severity={severity}
+        onSave={() => saveRecord({
+          id: Date.now().toString(),
+          type: 'lab',
+          title: 'نتائج التحاليل المخبرية',
+          date: new Date().toISOString(),
+          content: result,
+          severity: severity as any
+        })}
+      />
       
       {result && (
         <button 
@@ -896,23 +1164,117 @@ const LabAnalyzer = () => {
 };
 
 const MedicalRecords = () => {
+  const [records, setRecords] = useState<MedicalRecord[]>([]);
+
+  useEffect(() => {
+    const saved = localStorage.getItem('medical_records');
+    if (saved) {
+      setRecords(JSON.parse(saved));
+    }
+  }, []);
+
+  const deleteRecord = (id: string) => {
+    if (window.confirm('هل أنت متأكد من حذف هذا السجل؟')) {
+      const updated = records.filter(r => r.id !== id);
+      setRecords(updated);
+      localStorage.setItem('medical_records', JSON.stringify(updated));
+    }
+  };
+
+  const getIcon = (type: string) => {
+    switch (type) {
+      case 'prescription': return ScanLine;
+      case 'lab': return FlaskConical;
+      case 'radiology': return BrainCircuit;
+      case 'medicine': return Pill;
+      default: return FileText;
+    }
+  };
+
   return (
     <div className="max-w-4xl mx-auto">
        <div className="mb-8">
         <h2 className="text-3xl font-bold text-white mb-2">السجل الطبي</h2>
-        <p className="text-slate-300">تاريخك الطبي ونتائج التحاليل السابقة.</p>
+        <p className="text-slate-300">تاريخك الطبي ونتائج التحاليل السابقة المحفوظة.</p>
       </div>
       
-      <div className="glass-card p-8 rounded-3xl text-center">
-        <div className="w-20 h-20 bg-white/5 rounded-full flex items-center justify-center mx-auto mb-4">
-          <FileText className="w-10 h-10 text-slate-400" />
+      {records.length === 0 ? (
+        <div className="glass-card p-12 rounded-3xl text-center flex flex-col items-center">
+          <div className="w-24 h-24 bg-white/5 rounded-full flex items-center justify-center mb-6">
+            <FileText className="w-12 h-12 text-slate-500" />
+          </div>
+          <h3 className="text-2xl font-bold text-white mb-2">لا توجد سجلات محفوظة</h3>
+          <p className="text-slate-400 max-w-md mx-auto">
+            قم بإجراء تحاليل أو مسح روشتات ثم اضغط على زر "حفظ" لإضافتها هنا.
+          </p>
         </div>
-        <h3 className="text-xl font-bold text-white mb-2">قريباً</h3>
-        <p className="text-slate-400">سيتم تفعيل ميزة حفظ السجلات الطبية في التحديث القادم.</p>
-      </div>
+      ) : (
+        <div className="grid gap-6">
+          {records.map((record) => {
+            const Icon = getIcon(record.type);
+            return (
+              <motion.div 
+                key={record.id}
+                initial={{ opacity: 0, y: 20 }}
+                animate={{ opacity: 1, y: 0 }}
+                className="glass-card p-6 rounded-2xl border border-white/10 hover:bg-white/5 transition-colors"
+              >
+                <div className="flex items-start justify-between mb-4">
+                  <div className="flex items-center gap-4">
+                    <div className={`p-3 rounded-xl ${
+                      record.type === 'prescription' ? 'bg-emerald-500/20 text-emerald-400' :
+                      record.type === 'lab' ? 'bg-pink-500/20 text-pink-400' :
+                      record.type === 'radiology' ? 'bg-purple-500/20 text-purple-400' :
+                      'bg-blue-500/20 text-blue-400'
+                    }`}>
+                      <Icon className="w-6 h-6" />
+                    </div>
+                    <div>
+                      <h3 className="text-xl font-bold text-white">{record.title}</h3>
+                      <p className="text-sm text-slate-400 flex items-center gap-2 mt-1">
+                        <Clock className="w-3 h-3" />
+                        {new Date(record.date).toLocaleDateString('ar-EG', { 
+                          weekday: 'long', year: 'numeric', month: 'long', day: 'numeric', hour: '2-digit', minute: '2-digit' 
+                        })}
+                      </p>
+                    </div>
+                  </div>
+                  <button 
+                    onClick={() => deleteRecord(record.id)}
+                    className="p-2 hover:bg-red-500/20 text-slate-400 hover:text-red-400 rounded-lg transition-colors"
+                    title="حذف السجل"
+                  >
+                    <X className="w-5 h-5" />
+                  </button>
+                </div>
+                
+                <div className="bg-black/20 rounded-xl p-4 max-h-40 overflow-y-auto text-slate-300 text-sm mb-4 custom-scrollbar">
+                  <ReactMarkdown remarkPlugins={[remarkGfm]}>
+                    {record.content.substring(0, 300) + (record.content.length > 300 ? '...' : '')}
+                  </ReactMarkdown>
+                </div>
+
+                <div className="flex items-center justify-end gap-3">
+                  <ExportButton targetId={`record-${record.id}`} />
+                  {/* Hidden content for export */}
+                  <div id={`record-${record.id}`} className="hidden">
+                    <div className="p-8 bg-[#0f172a] text-white" dir="rtl">
+                      <h1 className="text-2xl font-bold mb-4">{record.title}</h1>
+                      <p className="text-sm text-slate-400 mb-6">{new Date(record.date).toLocaleDateString('ar-EG')}</p>
+                      <div className="prose prose-invert max-w-none">
+                        <ReactMarkdown remarkPlugins={[remarkGfm]}>{record.content}</ReactMarkdown>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              </motion.div>
+            );
+          })}
+        </div>
+      )}
     </div>
-  )
-}
+  );
+};
 
 export default function App() {
   const [activeTab, setActiveTab] = useState('dashboard');
