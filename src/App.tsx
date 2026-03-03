@@ -669,6 +669,9 @@ const AnalysisResult = ({ title, content, loading, severity, id, onSave }: any) 
 // --- Main Views ---
 
 const Dashboard = () => {
+  const [searchResult, setSearchResult] = useState<string | null>(null);
+  const [isSearching, setIsSearching] = useState(false);
+
   const stats = [
     { label: 'المرضى اليوم', value: '12', icon: Activity, color: 'text-blue-400', bg: 'bg-blue-500/20' },
     { label: 'التحاليل المكتملة', value: '8', icon: FlaskConical, color: 'text-purple-400', bg: 'bg-purple-500/20' },
@@ -676,14 +679,66 @@ const Dashboard = () => {
     { label: 'الروشتات المعالجة', value: '24', icon: FileText, color: 'text-emerald-400', bg: 'bg-emerald-500/20' },
   ];
 
-  const handleSearch = (query: string) => {
-    alert(`جاري البحث عن الأعراض: ${query} في قاعدة البيانات والربط مع السجل الطبي...`);
-    // In a real app, this would trigger an AI analysis of symptoms vs records
+  async function getMedicalAdvice(symptom: string) {
+    try {
+      const response = await fetch('/api/medical-analysis', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ prompt: `المريض يعاني من ${symptom}. حلل العَرَض واقترح فحوصات أو أدوية بسيطة بناءً على البروتوكولات الطبية.` })
+      });
+      
+      if (!response.ok) throw new Error("فشل الاتصال بقاعدة البيانات");
+      
+      const data = await response.json();
+      return data.analysis; 
+    } catch (error) {
+      console.error("Error:", error);
+      return "نعتذر، واجهنا مشكلة في الربط الطبي. يرجى المحاولة لاحقاً.";
+    }
+  }
+
+  const handleSearch = async (query: string) => {
+    setIsSearching(true);
+    setSearchResult(null);
+    const advice = await getMedicalAdvice(query);
+    setSearchResult(advice);
+    setIsSearching(false);
   };
 
   return (
     <div className="space-y-8">
       <SmartSearch onSearch={handleSearch} />
+
+      {isSearching && (
+        <div className="glass-card p-8 rounded-2xl flex flex-col items-center justify-center">
+          <div className="w-12 h-12 border-4 border-[#0077b6] border-t-transparent rounded-full animate-spin mb-4"></div>
+          <p className="text-white">جاري تحليل الأعراض...</p>
+        </div>
+      )}
+
+      {searchResult && !isSearching && (
+        <motion.div 
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          className="glass-card p-8 rounded-2xl border border-[#0077b6]/30 relative overflow-hidden"
+        >
+          <div className="absolute top-0 left-0 w-full h-1 bg-gradient-to-r from-[#0077b6] to-cyan-400"></div>
+          <div className="flex items-center gap-3 mb-4">
+            <Stethoscope className="w-6 h-6 text-[#0077b6]" />
+            <h3 className="text-xl font-bold text-white">التحليل الطبي للأعراض</h3>
+          </div>
+          <div className="prose prose-invert max-w-none text-slate-200">
+            <ReactMarkdown remarkPlugins={[remarkGfm]}>{searchResult}</ReactMarkdown>
+          </div>
+          <button 
+            onClick={() => setSearchResult(null)}
+            className="mt-6 text-sm text-slate-400 hover:text-white flex items-center gap-2"
+          >
+            <X className="w-4 h-4" />
+            إغلاق النتائج
+          </button>
+        </motion.div>
+      )}
 
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
         {stats.map((stat, idx) => (
