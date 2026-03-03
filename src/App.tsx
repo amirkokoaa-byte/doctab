@@ -52,7 +52,7 @@ import { getAiClient, fileToGenerativePart } from './services/ai';
 import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip as RechartsTooltip, ResponsiveContainer } from 'recharts';
-import html2canvas from 'html2canvas';
+import { toPng } from 'html-to-image';
 import jsPDF from 'jspdf';
 
 // ... (Sidebar, FileUpload, ResearchInsights, InteractionModal, TrendChart, SmartSearch, ExportButton, AnalysisResult components)
@@ -547,16 +547,12 @@ const ExportButton = ({ targetId }: { targetId: string }) => {
     if (!element) return;
 
     try {
-      const canvas = await html2canvas(element, {
-        backgroundColor: '#0f172a',
-        scale: 2,
-      });
-      const imgData = canvas.toDataURL('image/png');
+      const dataUrl = await toPng(element, { backgroundColor: '#0f172a' });
       const pdf = new jsPDF('p', 'mm', 'a4');
       const pdfWidth = pdf.internal.pageSize.getWidth();
-      const pdfHeight = (canvas.height * pdfWidth) / canvas.width;
+      const pdfHeight = (element.offsetHeight * pdfWidth) / element.offsetWidth;
       
-      pdf.addImage(imgData, 'PNG', 0, 0, pdfWidth, pdfHeight);
+      pdf.addImage(dataUrl, 'PNG', 0, 0, pdfWidth, pdfHeight);
       pdf.save('medical-report.pdf');
     } catch (err) {
       console.error("Export failed", err);
